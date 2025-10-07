@@ -1,0 +1,7 @@
+{{ define "_joined_header.html" }}
+<div class="container" id="joined-header">
+  <strong>You joined as {{ .PlayerName }}</strong>
+  <button class="btn btn-danger" type="button" hx-post="/leave" hx-target="#join-area"
+     hx-swap="innerHTML">Exit</button>
+</div>
+{{ end }}

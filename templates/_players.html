@@ -1,0 +1,11 @@
+{{ define "_players.html" }}
+<ul>
+  {{- if .Game }}
+    {{- range $id, $p := .Game.Players }}
+      <li>{{ $p.Name }} — (row {{ $p.Position.Row }}, col {{ $p.Position.Col }})</li>
+    {{- end }}
+  {{- else }}
+    <li>No players</li>
+  {{- end }}
+</ul>
+{{ end }}

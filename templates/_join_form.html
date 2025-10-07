@@ -1,0 +1,21 @@
+{{ define "_join_form.html" }}
+<div class="container text-center">
+  <header class="text-center">
+    <h3><strong>Welcome to Portals</strong></h3>
+  </header>
+  <label>Name:</label>
+    <input type="text" name="player_name" id="player_name" required />
+    <button 
+      class="btn btn-primary" 
+      type="button"
+      hx-post="/join"
+      hx-include="#player_name"
+      hx-target="#join-area"
+      hx-swap="innerHTML"
+      hx-disabled-elt="this"
+      >
+      Join
+    </button>
+</div>
+
+{{ end }}

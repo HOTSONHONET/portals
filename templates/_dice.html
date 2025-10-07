@@ -1,0 +1,15 @@
+{{ define "_dice.html" }}
+<div id="dice">
+  <button
+    class="btn btn-outline-primary"
+    type="button"
+    hx-get="/dice-roll"
+    hx-target="#dice"
+    hx-swap="outerHTML">
+    🎲 Roll Dice
+  </button>
+  {{ if .JustRolled }}
+    <div>You Got: <strong>{{ .JustRolled }}</strong></div>
+  {{ end }}
+</div>
+{{ end }}

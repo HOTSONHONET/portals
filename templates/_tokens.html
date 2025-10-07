@@ -1,0 +1,10 @@
+{{ define "_tokens.html" }}
+{{- range $id, $p := .Game.Players }}
+  <div id="token-{{ $p.ID }}"
+       class="token"
+       data-row="{{ $p.Position.Row }}"
+       data-col="{{ $p.Position.Col }}">
+    {{ $p.Name }}
+  </div>
+{{- end }}
+{{ end }}
