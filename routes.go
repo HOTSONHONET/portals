@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -11,13 +12,15 @@ import (
 type GameHandler struct {
 	Game   *Game
 	Broker *Broker
+	Stream *Stream
 	Render func(name string, data any) string
 }
 
-func NewGameHander(game *Game, broker *Broker, render func(string, any) string) *GameHandler {
+func NewGameHander(game *Game, broker *Broker, streamer *Stream, render func(string, any) string) *GameHandler {
 	return &GameHandler{
 		Game:   game,
 		Broker: broker,
+		Stream: streamer,
 		Render: render,
 	}
 }
@@ -60,6 +63,7 @@ func (h *GameHandler) BroadCastEvents(c *gin.Context) {
 		return
 	}
 
+	log.Printf("players: %v\n", h.Game.Players)
 	// Sending initial events
 	board := h.Render("_board.html", gin.H{"Game": h.Game})
 	players := h.Render("_players.html", gin.H{"Game": h.Game})

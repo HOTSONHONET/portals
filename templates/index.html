@@ -100,36 +100,42 @@
 
     <!-- Board -->
     <div class="container">
-      <div class="panel">
-        <h3>Board</h3>
-
-        {{ template "_board.html" . }}
+      <div class="row">
+        <div class="col">
+          <div class="panel">
+            <h3>Board</h3>
+            {{ template "_board.html" . }}
+          </div>
+        </div>
+        <div class="col">
+          <div class="panel text-center">
+            <h3>Stream</h3>
+            {{ template "_stream_chats.html" .}}
+          </div>
+        </div>
+      </div>
+      <hr />
+      <div class="row">
+        <div class="col">
+          <div class="panel text-start">
+            <h3>Players</h3>
+            <div id="players" sse-swap="players" hx-swap="innerHTML"></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="panel text-start">
+            <h3>Dice</h3>
+            <div id="dice" sse-swap="dice" hx-swap="outerHTML">
+              {{ template "_dice.html" . }}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- <div class="container mx-auto" id="board" sse-swap="board" hx-swap="innerHTML"></div> -->
-    </div>
-
-    <hr />
-    <!-- Players -->
-    <div class="container">
-      <h3>Players</h3>
-      <div id="players" sse-swap="players" hx-swap="innerHTML"></div>
-    </div>
-
-    <!-- Dice -->
-    <div class="container">
-      <h3>Dice</h3>
-      <div id="dice" sse-swap="dice" hx-swap="outerHTML">
-        {{ template "_dice.html" . }}
-      </div>
-    </div>
-  </div>
-
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
-    crossorigin="anonymous"></script>
-  </script>
+      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+        crossorigin="anonymous"></script>
+      </script>
 </body>
 
 </html>

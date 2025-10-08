@@ -42,6 +42,9 @@ func Arise() *gin.Engine {
 	game := &Game{}
 	game.InitGame()
 
+	// Initializing the stream
+	streamer := NewStreamer()
+
 	// Creating broker
 	broker := NewBroker()
 
@@ -55,7 +58,7 @@ func Arise() *gin.Engine {
 
 		return buf.String()
 	}
-	h := NewGameHander(game, broker, Render)
+	h := NewGameHander(game, broker, streamer, Render)
 	router.GET("/", h.SetPortalsCookie)
 	router.GET("/events", h.BroadCastEvents)
 	router.GET("/dice-roll", h.RollDice)

@@ -1,8 +1,8 @@
 {{ define "_board.html" }}
-<div class="grid" style="grid-template-columns: repeat({{ .Game.Size }}, 48px); gap: 8px;">
+<div class="grid border border-dark p-2" style="grid-template-columns: repeat({{ .Game.Size }}, 40px); gap: 8px; ">
   {{- range $r, $row := .Game.Board }}
     {{- range $c, $cell := $row }}
-      <div class="cell {{ if $cell.IsPortal }}portal{{ end }}" style="background-color: {{ .Color }};">
+      <div class="cell {{ if $cell.IsPortal }}portal{{ end }}" style="background-color: {{ .Color }}; margin: 2px;">
         {{ $cell.Value }}
       </div>
     {{- end }}
