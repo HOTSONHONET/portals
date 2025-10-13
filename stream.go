@@ -53,6 +53,7 @@ func NewStreamer() *Stream {
 		log.Fatalf("error while parsing MAX_STREAMS | error: %v\n", err)
 	}
 	return &Stream{
+		Logs:    StreamLogs{},
 		MaxSize: maxStreams,
 	}
 }

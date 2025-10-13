@@ -18,7 +18,7 @@ type Cell struct {
 	Dest     Position
 	Value    int
 	Color    string
-	Players  []string
+	Players  []Player
 }
 
 type Player struct {
@@ -142,29 +142,57 @@ func (game *Game) AddPlayer(playerID, playerName string) error {
 		return fmt.Errorf("Player already exists")
 	}
 
+	startRow, startCol := game.Size-1, 0
 	game.Players[playerID] = Player{
 		ID:   playerID,
 		Name: playerName,
 		Position: Position{
-			Row: game.Size - 1,
-			Col: 0,
+			Row: startRow,
+			Col: startCol,
 		},
 		Rank: 0,
 	}
+
+	// Adding player to the cell
+	game.Board[startRow][startCol].Players = append(game.Board[startRow][startCol].Players, game.Players[playerID])
+
 	return nil
 }
 
+// Remove player from the cell
+func (game *Game) removePlayerFromCell(playerID string) {
+	idx := -1
+	pos := game.Players[playerID].Position
+	row, col := pos.Row, pos.Col
+
+	for i, player := range game.Board[row][col].Players {
+		if player.ID == playerID {
+			idx = i
+			break
+		}
+	}
+
+	if idx != -1 {
+		game.Board[row][col].Players = append(game.Board[row][col].Players[:idx], game.Board[row][col].Players[idx+1:]...)
+	}
+}
+
 // Remove the player with the given player ID from the Game
-func (game *Game) RemovePlayer(playerID string) error {
+func (game *Game) RemovePlayer(playerID string) (string, error) {
 	game.Mu.Lock()
 	defer game.Mu.Unlock()
 
 	if _, exists := game.Players[playerID]; !exists {
-		return fmt.Errorf("Player doesn't exists")
+		return "", fmt.Errorf("Player doesn't exists")
 	}
 
+	playerName := game.Players[playerID].Name
+
+	// removing player from the cell
+	game.removePlayerFromCell(playerID)
+
 	delete(game.Players, playerID)
-	return nil
+	return playerName, nil
 }
 
 // Updates the player position in the board
@@ -181,6 +209,9 @@ func (game *Game) MovePlayer(steps int, playerID string) (Position, bool, Positi
 
 	row, col := playerState.Position.Row, playerState.Position.Col
 	size := game.Size
+
+	// removing player from the game board
+	game.removePlayerFromCell(playerID)
 
 	for steps > 0 {
 		left2Right := ((size-1-row)%2 == 0)
@@ -222,7 +253,7 @@ func (game *Game) MovePlayer(steps int, playerID string) (Position, bool, Positi
 	cell := game.Board[row][col]
 
 	if cell.IsPortal {
-		dest := cell.Dest
+		dest = cell.Dest
 		row, col = dest.Row, dest.Col
 		teleported = true
 	}
@@ -233,6 +264,7 @@ func (game *Game) MovePlayer(steps int, playerID string) (Position, bool, Positi
 	}
 
 	game.Players[playerID] = playerState
+	game.Board[row][col].Players = append(game.Board[row][col].Players, game.Players[playerID])
 
 	return playerState.Position, teleported, dest, nil
 }

@@ -1,5 +1,11 @@
 {{ define "_stream_chats.html" }}
-    <div class="container border border-dark rounded" style="height: 30vh;">
-
+    <div class="container border border-dark rounded overflow-y-scroll" style="height: 30vh;">
+        {{if .Stream }}
+        {{range $id, $log := .Stream.Logs }}
+            <div><strong>{{ $log.TimeStamp }} - {{ $log.Message }}</strong></div>
+        {{ end }}
+        {{else}}
+            <div><strong>No Logs</strong></div>
+        {{ end }}
     </div>
 {{ end }}

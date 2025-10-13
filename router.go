@@ -11,29 +11,29 @@ import (
 func Arise() *gin.Engine {
 	router := gin.Default()
 
+	// loading static files
+	router.Static("/static", "./static")
+
 	// Loading all the templates
-	sub := func(x, y int) int {
-		return x - y
-	}
-
-	seq := func(start, end int) []int {
-		n := end - start + 1
-		if n <= 0 {
-			return []int{}
-		}
-
-		out := make([]int, n)
-		for i := range n {
-			out[i] = start + i
-		}
-		return out
-	}
 	templ := template.Must(
 		template.New("all").
 			Funcs(
 				template.FuncMap{
-					"seq": seq,
-					"sub": sub,
+					"seq": func(start, end int) []int {
+						n := end - start + 1
+						if n <= 0 {
+							return []int{}
+						}
+
+						out := make([]int, n)
+						for i := range n {
+							out[i] = start + i
+						}
+						return out
+					},
+					"sub": func(x, y int) int {
+						return x - y
+					},
 				}).ParseGlob("templates/*.html"),
 	)
 	router.SetHTMLTemplate(templ)

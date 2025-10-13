@@ -31,14 +31,14 @@ func (b *Broker) Remove(c chan string) {
 	close(c)
 }
 
-func sseEvent(event, html string) string {
+func convert2sseEvent(event, html string) string {
 	html = strings.ReplaceAll(html, "\r\n", "\n")
 	html = strings.ReplaceAll(html, "\n", "\ndata: ")
 	return fmt.Sprintf("event: %v\ndata: %v\n\n", event, html)
 }
 
 func (b *Broker) Broadcast(event, html string) {
-	msg := sseEvent(event, html)
+	msg := convert2sseEvent(event, html)
 	b.mu.Lock()
 	defer b.mu.Unlock()
 

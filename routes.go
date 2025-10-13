@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -63,17 +63,18 @@ func (h *GameHandler) BroadCastEvents(c *gin.Context) {
 		return
 	}
 
-	log.Printf("players: %v\n", h.Game.Players)
 	// Sending initial events
 	board := h.Render("_board.html", gin.H{"Game": h.Game})
 	players := h.Render("_players.html", gin.H{"Game": h.Game})
 	dice := h.Render("_dice.html", gin.H{"Game": h.Game, "Me": player_id})
 	tokens := h.Render("_tokens.html", gin.H{"Game": h.Game})
+	stream := h.Render("_stream_chats.html", gin.H{"Stream": h.Stream})
 
-	c.Writer.Write([]byte(sseEvent("board", board)))
-	c.Writer.Write([]byte(sseEvent("players", players)))
-	c.Writer.Write([]byte(sseEvent("dice", dice)))
-	c.Writer.Write([]byte(sseEvent("tokens", tokens)))
+	c.Writer.Write([]byte(convert2sseEvent("board", board)))
+	c.Writer.Write([]byte(convert2sseEvent("players", players)))
+	c.Writer.Write([]byte(convert2sseEvent("dice", dice)))
+	c.Writer.Write([]byte(convert2sseEvent("tokens", tokens)))
+	c.Writer.Write([]byte(convert2sseEvent("stream", stream)))
 	flusher.Flush()
 
 	// Pump
@@ -105,11 +106,17 @@ func (h *GameHandler) JoinGame(c *gin.Context) {
 		return
 	}
 
+	h.Stream.Push(StreamLog{
+		TimeStamp: time.Now(),
+		Message:   fmt.Sprintf("%v has joined the game", name),
+	})
+
 	// Boardcasting players + board
 	h.Broker.Broadcast("players", h.Render("_players.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("board", h.Render("_board.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("dice", h.Render("_dice.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("tokens", h.Render("_tokens.html", gin.H{"Game": h.Game}))
+	h.Broker.Broadcast("stream", h.Render("_stream_chats.html", gin.H{"Stream": h.Stream}))
 
 	// Swaping join section
 	c.HTML(http.StatusOK, "_joined_header.html", gin.H{"PlayerName": name})
@@ -122,16 +129,24 @@ func (h *GameHandler) RemovePlayer(c *gin.Context) {
 		return
 	}
 
-	if err = h.Game.RemovePlayer(player_id); err != nil {
+	playerName, err := h.Game.RemovePlayer(player_id)
+	if err != nil {
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
+
+	// Adding message to the streamer
+	h.Stream.Push(StreamLog{
+		TimeStamp: time.Now(),
+		Message:   fmt.Sprintf("%v has left the game", playerName),
+	})
 
 	// BoardCasting Events
 	h.Broker.Broadcast("players", h.Render("_players.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("board", h.Render("_board.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("dice", h.Render("_dice.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("tokens", h.Render("_tokens.html", gin.H{"Game": h.Game}))
+	h.Broker.Broadcast("stream", h.Render("_stream_chats.html", gin.H{"Stream": h.Stream}))
 
 	c.HTML(http.StatusOK, "_join_form.html", nil)
 

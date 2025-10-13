@@ -15,5 +15,5 @@ func main() {
 
 	// Creating Router
 	router := Arise()
-	router.Run("0.0.0.0:" + os.Getenv("PORT"))
+	router.Run(":" + os.Getenv("PORT"))
 }
