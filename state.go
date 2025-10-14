@@ -197,14 +197,14 @@ func (game *Game) RemovePlayer(playerID string) (string, error) {
 
 // Updates the player position in the board
 // based on the dice roll
-func (game *Game) MovePlayer(steps int, playerID string) (Position, bool, Position, error) {
+func (game *Game) MovePlayer(steps int, playerID string) (Player, bool, Position, error) {
 	game.Mu.Lock()
 	defer game.Mu.Unlock()
 
 	// Getting player position
 	playerState, exists := game.Players[playerID]
 	if !exists {
-		return Position{}, false, Position{}, fmt.Errorf("Player doesn't exists")
+		return Player{}, false, Position{}, fmt.Errorf("Player doesn't exists")
 	}
 
 	row, col := playerState.Position.Row, playerState.Position.Col
@@ -266,5 +266,5 @@ func (game *Game) MovePlayer(steps int, playerID string) (Position, bool, Positi
 	game.Players[playerID] = playerState
 	game.Board[row][col].Players = append(game.Board[row][col].Players, game.Players[playerID])
 
-	return playerState.Position, teleported, dest, nil
+	return playerState, teleported, dest, nil
 }

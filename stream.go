@@ -7,9 +7,18 @@ import (
 	"time"
 )
 
+const (
+	JOIN       string = "JOIN"
+	LEAVE             = "LEAVE"
+	MOVE              = "MOVE"
+	TELEPORTED        = "TELEPORTED"
+	COMPLETED         = "COMPLETED"
+)
+
 type StreamLog struct {
 	TimeStamp time.Time
 	Message   string
+	LogType   string
 }
 
 type StreamLogs []StreamLog

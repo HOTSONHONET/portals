@@ -2,7 +2,32 @@
     <div class="container border border-dark rounded overflow-y-scroll" style="height: 30vh;">
         {{if .Stream }}
         {{range $id, $log := .Stream.Logs }}
-            <div><strong>{{ $log.TimeStamp }} - {{ $log.Message }}</strong></div>
+            {{- if eq $log.LogType "JOIN"}}
+                <div 
+                    class="container border m-2 rounded rounded-2"
+                    style="background-color: rgb(64, 145, 64); color: white;"
+                ><strong>{{ $log.Message }}</strong></div>
+            {{- else if eq $log.LogType  "LEAVE"}}
+                <div 
+                    class="container border m-2 rounded rounded-2"
+                    style="background-color: rgb(206, 69, 69); color: white"
+                ><strong>{{ $log.Message }}</strong></div>
+            {{- else if eq $log.LogType  "MOVE"}}
+                <div 
+                    class="container border m-2 rounded rounded-2"
+                    style="background-color: rgb(69, 90, 206); color: white;"
+                ><strong>{{ $log.Message }}</strong></div>
+            {{- else if eq $log.LogType  "TELEPORTED"}}
+                <div 
+                    class="container border m-2 rounded rounded-2"
+                    style="background-color: rgb(163, 69, 206); color: white"
+                ><strong>{{ $log.Message }}</strong></div>
+            {{- else if eq $log.LogType  "COMPLETED"}}
+                <div 
+                    class="container border m-2 rounded rounded-2"
+                    style="background-color: rgb(214, 200, 75)"
+                ><strong>🍾🎉{{ $log.Message }}🍾🎉</strong></div>
+            {{ end }}
         {{ end }}
         {{else}}
             <div><strong>No Logs</strong></div>

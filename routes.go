@@ -109,6 +109,7 @@ func (h *GameHandler) JoinGame(c *gin.Context) {
 	h.Stream.Push(StreamLog{
 		TimeStamp: time.Now(),
 		Message:   fmt.Sprintf("%v has joined the game", name),
+		LogType:   JOIN,
 	})
 
 	// Boardcasting players + board
@@ -139,6 +140,7 @@ func (h *GameHandler) RemovePlayer(c *gin.Context) {
 	h.Stream.Push(StreamLog{
 		TimeStamp: time.Now(),
 		Message:   fmt.Sprintf("%v has left the game", playerName),
+		LogType:   LEAVE,
 	})
 
 	// BoardCasting Events
@@ -160,17 +162,32 @@ func (h *GameHandler) RollDice(c *gin.Context) {
 	}
 
 	roll := GetRandNumber(1, 7)
-	_, _, _, moveErr := h.Game.MovePlayer(roll, player_id)
+	playerState, hasTeleported, dest, moveErr := h.Game.MovePlayer(roll, player_id)
 	if moveErr != nil {
 		c.String(http.StatusBadRequest, moveErr.Error())
 		return
 	}
+
+	msg := fmt.Sprintf("%v has moved to %v\n", playerState.Name, dest)
+	logType := MOVE
+	if hasTeleported {
+		msg = fmt.Sprintf("%v has teleported to %v\n", playerState.Name, dest)
+		logType = TELEPORTED
+	}
+
+	// Adding message to the streamer
+	h.Stream.Push(StreamLog{
+		TimeStamp: time.Now(),
+		Message:   msg,
+		LogType:   logType,
+	})
 
 	// BoardCasting Events
 	h.Broker.Broadcast("players", h.Render("_players.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("board", h.Render("_board.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("dice", h.Render("_dice.html", gin.H{"Game": h.Game, "Me": player_id}))
 	h.Broker.Broadcast("tokens", h.Render("_tokens.html", gin.H{"Game": h.Game}))
+	h.Broker.Broadcast("stream", h.Render("_stream_chats.html", gin.H{"Stream": h.Stream}))
 
 	c.HTML(
 		http.StatusOK,
