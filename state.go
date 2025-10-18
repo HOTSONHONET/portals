@@ -144,7 +144,7 @@ func (game *Game) InitGame() {
 		destRow, destCol := finder[cellVal].Row, finder[cellVal].Col
 		validCellVals = append(validCellVals[:idx], validCellVals[idx+1:]...)
 
-		color := GenerateLightRandomColor()
+		color := GenerateVibrantRandomColor()
 		grid[srrow][srcol].IsPortal = true
 		grid[srrow][srcol].Dest = Position{
 			Row: destRow,
