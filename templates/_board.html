@@ -4,7 +4,7 @@
     {{- range $r, $row := .Game.Board }}
       {{- range $c, $cell := $row }}
         <div
-          class="cell {{ if $cell.IsPortal }}portal{{ end }}"
+          class="cell {{ if $cell.IsPortal }}portal pulse{{ end }}"
           data-val="{{ $cell.Value }}"
           {{- if $cell.IsPortal }} style="--portal: {{ $cell.Color }};"{{ end -}}
         >

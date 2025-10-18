@@ -1,7 +1,6 @@
 {{ define "index.html" }}
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8" />
   <title>Portals</title>
@@ -13,81 +12,70 @@
 
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
-    integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
 
-  <!-- Your glossy board styles (match the filename you saved) -->
+  <!-- Styles -->
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 
 <body hx-ext="sse" sse-connect="/events">
-  <div class="container my-3">
-    <div class="d-flex flex-row justify-content-center align-items-start gap-3 flex-wrap">
-      <!-- Join -->
-      <div id="join-area" class="flex-grow-1" style="max-width: 340px;">
-        {{ template "_join_form.html" . }}
-      </div>
+  <div class="container my-3 main-wrap">
 
-      <!-- Board + Stream -->
-      <!-- Center the whole app a bit -->
-      <div class="main-wrap">
+    <!-- Join (kept small, floats above layout) -->
+    <div id="join-area" class="mb-3" style="max-width: 340px;">
+      {{ template "_join_form.html" . }}
+    </div>
 
-        <!-- Board + Stream in a 2-col grid -->
-        <div class="board-stream my-2">
+    <!-- ===== Two-column app: Board (left) | Right stack (right) ===== -->
+    <div class="board-stream">
 
-          <!-- LEFT: Board -->
-          <section class="board-wrap">
-            <h3 class="mb-2">Board</h3>
-            <div id="board" sse-swap="board" hx-swap="innerHTML">
-              {{ template "_board.html" . }}
-            </div>
-          </section>
+      <!-- LEFT: Board -->
+      <section>
+        <!-- <h3 class="mb-2">Board</h3> -->
+        <div id="board" sse-swap="board" hx-swap="innerHTML">
+          {{ template "_board.html" . }}
+        </div>
+      </section>
 
-          <!-- RIGHT: Stream -->
-          <aside class="stream-wrap">
+      <!-- RIGHT: vertically stacked panels -->
+      <aside class="stream-wrap">
+        <div class="d-flex flex-column gap-3">
+
+          <!-- Stream -->
+          <div>
             <h3 class="mb-2">Stream</h3>
             <div id="stream-pane" class="stream-card" sse-swap="stream" hx-swap="innerHTML">
               {{ template "_stream_chats.html" . }}
             </div>
-          </aside>
+          </div>
 
-        </div>
-
-      </div>
-
-
-      <!-- Players + Dice -->
-      <div class="flex-grow-1" style="min-width: 420px;">
-        <div class="row g-4 mt-2">
-          <div class="col-12 col-md-6">
-            <div class="panel text-start">
-              <h3 class="mb-2">Players</h3>
-              <div id="players" sse-swap="players" hx-swap="innerHTML"></div>
+          <!-- Dice -->
+          <div class="panel text-start">
+            <h3 class="mb-2">Dice</h3>
+            <div id="dice" hx-swap="outerHTML">
+              {{ template "_dice.html" . }}
             </div>
           </div>
-          <div class="col-12 col-md-6">
-            <div class="panel text-start">
-              <h3 class="mb-2">Dice</h3>
-              <!-- No SSE for dice unless you also push it from server -->
-              <div id="dice" hx-swap="outerHTML">
-                {{ template "_dice.html" . }}
-              </div>
-            </div>
+
+          <!-- Players -->
+          <div class="panel text-start">
+            <h3 class="mb-2">Players</h3>
+            <div id="players" sse-swap="players" hx-swap="innerHTML"></div>
           </div>
-          <div class="col-12">
-            <!-- Optional global progress bar (example) -->
-            <div class="progress-pill mt-1"><span id="p1-progress"></span></div>
-          </div>
+
         </div>
-      </div>
+      </aside>
+
     </div>
+    <!-- /board-stream -->
+
   </div>
 
-  <!-- Effects (make sure filename matches) -->
+  <!-- Effects -->
   <script src="/static/js/effects.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"
-    defer></script>
+          integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+          crossorigin="anonymous" defer></script>
 </body>
-
 </html>
 {{ end }}
