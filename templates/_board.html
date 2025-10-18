@@ -1,27 +1,33 @@
 {{ define "_board.html" }}
-<div class="grid border border-dark p-2" style="grid-template-columns: repeat({{ .Game.Size }}, 40px); gap: 8px;">
-  {{- range $r, $row := .Game.Board }}
-    {{- range $c, $cell := $row }}
-      <div class="cell {{ if $cell.IsPortal }}portal{{ end }}" style="background-color: {{ $cell.Color }}; margin: 2px;">
-        <span class="cell-value">{{ $cell.Value }}</span>
+<div class="board-wrap">
+  <div class="grid" style="--n: {{ .Game.Size }};">
+    {{- range $r, $row := .Game.Board }}
+      {{- range $c, $cell := $row }}
+        <div
+          class="cell {{ if $cell.IsPortal }}portal{{ end }}"
+          data-val="{{ $cell.Value }}"
+          {{- if $cell.IsPortal }} style="--portal: {{ $cell.Color }};"{{ end -}}
+        >
+          <span class="cell-value">{{ $cell.Value }}</span>
 
-        {{- $n := len $cell.Players }}
-        {{- range $i, $p := $cell.Players }}
-          <span class="badge text-bg-secondary token
-            {{ if eq $n 1 }}
-              pos-center
-            {{ else if eq $n 2 }}
-              {{ if eq $i 0 }}pos-tl{{ else }}pos-br{{ end }}
-            {{ else if eq $n 3 }}
-              {{ if eq $i 0 }}pos-tl{{ else if eq $i 1 }}pos-tr{{ else }}pos-bl{{ end }}
-            {{ else }}
-              {{ if eq $i 0 }}pos-tl{{ else if eq $i 1 }}pos-tr{{ else if eq $i 2 }}pos-bl{{ else }}pos-br{{ end }}
-            {{ end }}">
-            {{ $p.Name }}
-          </span>
-        {{- end }}
-      </div>
+          {{- $n := len $cell.Players }}
+          {{- range $i, $p := $cell.Players }}
+            <span class="badge text-bg-secondary token
+              {{ if eq $n 1 }}
+                pos-center
+              {{ else if eq $n 2 }}
+                {{ if eq $i 0 }}pos-tl{{ else }}pos-br{{ end }}
+              {{ else if eq $n 3 }}
+                {{ if eq $i 0 }}pos-tl{{ else if eq $i 1 }}pos-tr{{ else }}pos-bl{{ end }}
+              {{ else }}
+                {{ if eq $i 0 }}pos-tl{{ else if eq $i 1 }}pos-tr{{ else if eq $i 2 }}pos-bl{{ else }}pos-br{{ end }}
+              {{ end }}">
+              {{ $p.Name }}
+            </span>
+          {{- end }}
+        </div>
+      {{- end }}
     {{- end }}
-  {{- end }}
+  </div>
 </div>
 {{ end }}

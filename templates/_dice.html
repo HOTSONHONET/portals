@@ -1,15 +1,47 @@
 {{ define "_dice.html" }}
-<div id="dice">
-  <button
-    class="btn btn-outline-primary"
-    type="button"
-    hx-get="/dice-roll"
-    hx-target="#dice"
-    hx-swap="outerHTML">
-    🎲 Roll Dice
-  </button>
+<div id="dice"
+     hx-on="
+       htmx:beforeRequest:
+         rollDice('#dice-face');
+         this.querySelector('button').disabled = true;
+       htmx:afterSwap:
+         this.querySelector('button') && this.querySelector('button').removeAttribute('disabled');
+     ">
+  <div class="d-flex align-items-center gap-3">
+    <!-- Dice face -->
+    <div id="dice-face" class="dice" aria-live="polite" aria-label="Dice result">
+      {{ if .JustRolled }}{{ .JustRolled }}{{ else }}?{{ end }}
+    </div>
+
+    <!-- Controls + readout -->
+    <div class="d-flex flex-column">
+      <button
+        class="btn btn-primary"
+        type="button"
+        hx-get="/dice-roll"
+        hx-target="#dice"
+        hx-swap="outerHTML"
+        hx-disabled-elt="this">
+        🎲 Roll
+        <span class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+      </button>
+
+      {{ if .JustRolled }}
+        <div class="small mt-2">You got <strong>{{ .JustRolled }}</strong></div>
+      {{ end }}
+    </div>
+  </div>
+
   {{ if .JustRolled }}
-    <div>You Got: <strong>{{ .JustRolled }}</strong></div>
+  <script>
+    (function () {
+      // replay the roll animation after HTMX swaps this fragment in
+      rollDice('#dice-face');
+      // fun: glow the board on a 6
+      var rolled = {{ .JustRolled }};
+      if (rolled === 6) { fxGlowBoard(); }
+    })();
+  </script>
   {{ end }}
 </div>
 {{ end }}
