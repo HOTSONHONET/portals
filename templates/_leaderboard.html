@@ -1,0 +1,17 @@
+{{ define "_leaderboard.html" }}
+<div class="panel text-start">
+  <h3 class="mb-2">Leaderboard</h3>
+  {{ if .Game.BestFinishes }}
+    <ol class="list-group list-group-numbered">
+      {{ range .Game.BestFinishes }}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <span>{{ .PlayerName }}</span>
+        <span class="badge bg-primary rounded-pill">{{ .Elasped }}</span>
+      </li>
+      {{ end }}
+    </ol>
+  {{ else }}
+    <div class="text-muted small">No finishes yet — be the first!</div>
+  {{ end }}
+</div>
+{{ end }}

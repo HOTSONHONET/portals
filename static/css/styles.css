@@ -1,0 +1,286 @@
+/* ========= Core layout & variables ========= */
+:root{
+  --cols: 5;
+  --gap: 10px;
+  --cell-radius: 16px;
+  --text-dark: #2a3a70;
+
+  /* Overall board size limited by BOTH width & height */
+  --board-size: min(92vw, 88vh);
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  margin: 20px;
+  background: radial-gradient(1000px 600px at 20% -10%, #f8fbff, #ebf1ff 35%, #e9ecf8 60%, #e7e9f3);
+}
+
+/* ========= Board & Stream layout ========= */
+.board-stream {
+  --sidebar: 360px;
+  display: grid;
+  grid-template-columns: 1fr var(--sidebar);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 1100px){ .board-stream { grid-template-columns: 1fr; } }
+.main-wrap { max-width: 1200px; margin: 0 auto; }
+
+/* OPTIONAL: stream panel cosmetics */
+.stream-wrap { width: var(--sidebar); max-width: 100%; }
+.stream-card {
+  position: sticky; top: 10px;
+  max-height: 82vh; overflow: auto;
+  background: rgba(255,255,255,.6);
+  backdrop-filter: blur(4px);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.08);
+  padding: 8px;
+}
+
+/* ========= Board box: SINGLE frame, centered grid ========= */
+.board-wrap {
+  --frame-pad: 14px;                /* space between frame and cells */
+  width: var(--board-size);
+  height: var(--board-size);
+  margin: 0 auto;
+  padding: var(--frame-pad);
+  border-radius: 20px;
+  background: rgba(255,255,255,.3);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 8px 28px rgba(0,0,0,.06);
+  overflow: hidden;
+
+  display: grid;
+  place-items: center;              /* center the grid block */
+  aspect-ratio: 1 / 1;
+}
+
+/* Grid auto-sizing based on --n (board size).
+   Single frame only: NO extra bg/border/shadow here. */
+.board-wrap .grid{
+  width: 100%;
+  height: 100%;
+
+  /* compute square cell size that fits BOTH width & height */
+  --cellW: calc((100% - (var(--n) - 1) * var(--gap)) / var(--n));
+  --cellH: calc((100% - (var(--n) - 1) * var(--gap)) / var(--n));
+  --cell: min(var(--cellW), var(--cellH));
+
+  /* shrink so edges never clip */
+  --shrink: 0.92;
+  --cellFit: calc(var(--cell) * var(--shrink));
+
+  display: grid;
+  grid-template-columns: repeat(var(--n), var(--cellFit));
+  grid-auto-rows: var(--cellFit);
+  gap: var(--gap);
+
+  /* center the whole matrix inside the board frame */
+  justify-content: center;
+  align-content: center;
+
+  /* remove the second “layer” look */
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+
+  text-align: center;
+}
+
+/* ========= Glossy cells ========= */
+.cell {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;              /* perfect squares */
+  border-radius: var(--cell-radius);
+  position: relative;
+
+  display: flex;                     /* center the number */
+  align-items: center;
+  justify-content: center;
+
+  background: linear-gradient(145deg, #f6f8ff, #dfe6ff);
+  border: 1px solid rgba(60,90,190,.15);
+  box-shadow:
+    0 12px 24px rgba(0,20,80,.18),
+    inset 0 1px 0 rgba(255,255,255,.75),
+    inset 0 -2px 8px rgba(20,40,120,.10);
+  transition: transform .14s ease, box-shadow .22s ease, filter .22s ease;
+  overflow: hidden;
+}
+
+/* specular shine band */
+.cell::before {
+  content: "";
+  position: absolute; inset: -30% -30% auto -30%;
+  height: 60%;
+  transform: rotate(-12deg);
+  background: linear-gradient(to bottom, rgba(255,255,255,.65), rgba(255,255,255,0));
+  pointer-events: none;
+  filter: blur(1px);
+}
+
+/* hover lift + shimmer */
+.cell:hover { transform: translateY(-2px) scale(1.03); z-index: 3; }
+.cell:hover::after {
+  content:""; position:absolute; inset:0;
+  background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.18) 40%, transparent 80%);
+  animation: sweep 1s;
+}
+@keyframes sweep { from{ transform: translateX(-100%);} to{ transform: translateX(100%);} }
+
+/* ========= Cell internals ========= */
+.cell-value{
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px; font-weight: 700;
+  color: var(--text-dark);
+  text-shadow: 0 1px 0 rgba(255,255,255,.8);
+  pointer-events: none; opacity: .9;
+}
+
+/* “tokens” (name pills) */
+.token {
+  position: absolute;
+  padding: 3px 7px; border-radius: 10px;
+  font-size: 11px; line-height: 1;
+  pointer-events: none; z-index: 10;
+  animation: glow 1.2s ease-in-out infinite alternate;
+  color: #0b122b; background: rgba(255,255,255,.85);
+  border: 1px solid rgba(0,0,0,.08);
+  box-shadow: 0 2px 6px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.9);
+}
+
+/* token positions */
+.pos-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.pos-tl { top: 6px; left: 6px; }
+.pos-tr { top: 6px; right: 6px; }
+.pos-bl { bottom: 6px; left: 6px; }
+.pos-br { bottom: 6px; right: 6px; }
+
+/* token glow */
+@keyframes glow {
+  from { box-shadow: 0 0 6px rgba(255,255,255,.25), 0 0 0 0 rgba(80,160,255,0.0); transform: scale(1); }
+  to   { box-shadow: 0 0 12px rgba(255,255,255,.7), 0 0 18px 6px rgba(80,160,255,.45); transform: scale(1.04); }
+}
+
+/* ========= Interactions from events ========= */
+.cell.pop { animation: pop .18s ease; }
+@keyframes pop { 50% { transform: scale(1.06); } }
+
+/* ===== Radial animations you can trigger ===== */
+.cell.radiate::after{
+  content: "";
+  position: absolute; inset: 0; border-radius: inherit;
+  --pulse: #ff6ec7; /* override per cell via style="--pulse:#00d4ff" */
+  background:
+    radial-gradient(circle at 50% 50%,
+      var(--pulse) 0%,
+      color-mix(in srgb, var(--pulse) 75%, transparent) 32%,
+      color-mix(in srgb, var(--pulse) 25%, transparent) 58%,
+      transparent 64%);
+  transform: scale(0);
+  opacity: .95;
+  mix-blend-mode: multiply;
+  animation: cellSpread .9s ease-out forwards;
+}
+@keyframes cellSpread{ to { transform: scale(1.9); opacity: 0; } }
+
+.cell.pulse::after{
+  content: "";
+  position: absolute; inset: 0; border-radius: inherit;
+  --pulse: #7f5af0;
+  background:
+    radial-gradient(circle at 50% 50%,
+      var(--pulse) 0%,
+      color-mix(in srgb, var(--pulse) 55%, transparent) 35%,
+      color-mix(in srgb, var(--pulse) 18%, transparent) 60%,
+      transparent 66%);
+  transform: scale(0.6);
+  opacity: .8;
+  mix-blend-mode: multiply;
+  animation: cellPulse 1.8s ease-in-out infinite;
+}
+@keyframes cellPulse{
+  0% { transform: scale(0.6); opacity:.75; }
+  60%{ transform: scale(1.5); opacity:.15; }
+  100%{ transform: scale(0.6); opacity:.75; }
+}
+
+/* ===== Radial gradient portals (MDN-like) ===== */
+.cell.portal {
+  position: relative;
+  border-radius: var(--cell-radius);
+  border: 1px solid rgba(127, 90, 240, 0.35);
+  color: #0b122b;
+
+  background: radial-gradient(
+    circle at 50% 50%,
+    var(--portal, #7f5af0) 0%,
+    color-mix(in srgb, var(--portal), #00d4ff 40%) 35%,
+    rgba(255,255,255,0.2) 85%,
+    rgba(255,255,255,0) 100%
+  );
+
+  box-shadow:
+    0 0 15px color-mix(in srgb, var(--portal), #ffffff 50%),
+    inset 0 1px 2px rgba(255, 255, 255, 0.6),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.1);
+
+  animation: portalGlow 3s ease-in-out infinite alternate;
+}
+@keyframes portalGlow{
+  0%{
+    filter: brightness(1) saturate(1);
+    box-shadow:
+      0 0 10px color-mix(in srgb, var(--portal), #ffffff 40%),
+      inset 0 1px 2px rgba(255,255,255,.6),
+      inset 0 -3px 8px rgba(0,0,0,.08);
+  }
+  100%{
+    filter: brightness(1.2) saturate(1.3);
+    box-shadow:
+      0 0 25px color-mix(in srgb, var(--portal), #ffffff 60%),
+      inset 0 1px 2px rgba(255,255,255,.6),
+      inset 0 -3px 8px rgba(0,0,0,.15);
+  }
+}
+
+/* Optional ripple */
+.cell.ripple::after {
+  content:""; position:absolute; inset:0; border-radius: inherit;
+  border: 2px solid rgba(255,255,255,.95);
+  animation: ripple .6s ease-out;
+}
+@keyframes ripple { from { transform: scale(.82); opacity:.95; } to { transform: scale(1.12); opacity:0; } }
+
+/* ========= Dice ========= */
+.dice {
+  width: 44px; height: 44px; border-radius: 12px; background: #fff;
+  display: grid; place-items: center; font-weight: 800;
+  box-shadow: 0 10px 24px rgba(0,0,0,.18); user-select: none;
+}
+.dice.roll { animation: shake .6s ease; }
+@keyframes shake{
+  10%, 90% { transform: translate(-1px, 0) rotate(-2deg); }
+  20%, 80% { transform: translate( 2px, 0) rotate( 2deg); }
+  30%, 50%, 70% { transform: translate(-4px, 0) rotate(-3deg); }
+  40%, 60% { transform: translate( 4px, 0) rotate( 3deg); }
+}
+
+/* ========= Board glow ========= */
+.grid.glow { box-shadow: 0 0 0 0 rgba(127,90,240,.35); animation: gridglow .7s ease; }
+@keyframes gridglow { from { box-shadow: 0 0 0 14px rgba(127,90,240,0.0); } to { box-shadow: 0 0 0 0 rgba(127,90,240,0.0); } }
+
+/* ========= Responsive tweaks ========= */
+@media (max-width: 1200px){ .board-wrap .grid{ --shrink: 0.90; } }
+@media (max-width: 600px){
+  .board-stream { grid-template-columns: 1fr; }
+  :root{ --gap: 8px; }
+}

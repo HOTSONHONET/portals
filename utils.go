@@ -17,6 +17,25 @@ func GenerateLightRandomColor() string {
 	return fmt.Sprintf("#%02X%02X%02X", r, g, b)
 }
 
+// GenerateVibrantRandomColor returns a vibrant, visually strong color (not too dark/light)
+func GenerateVibrantRandomColor() string {
+	r := GetRandNumber(50, 205)
+	g := GetRandNumber(50, 205)
+	b := GetRandNumber(50, 205)
+
+	// Randomly boost one of the channels for vibrance
+	switch GetRandNumber(0, 3) {
+	case 0:
+		r = GetRandNumber(150, 255)
+	case 1:
+		g = GetRandNumber(150, 255)
+	case 2:
+		b = GetRandNumber(150, 255)
+	}
+
+	return fmt.Sprintf("#%02X%02X%02X", r, g, b)
+}
+
 func GetCurrentPlayers(game *Game) []Player {
 	players := make([]Player, 0)
 	for _, p := range game.Players {
@@ -41,4 +60,12 @@ func GetRandNumber(L, R int) int {
 	rand.New(rand.NewSource(time.Now().Unix()))
 	randVal := rand.Intn(R - L)
 	return L + randVal
+}
+
+func FormatElapsed(d time.Duration) string {
+	// mm:ss.mmm (e.g., 02:14.387)
+	min := int(d.Minutes())
+	sec := int(d.Seconds()) % 60
+	ms := int(d.Milliseconds()) % 1000
+	return fmt.Sprintf("%02d:%02d.%03d", min, sec, ms)
 }

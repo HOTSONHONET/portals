@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -69,12 +70,15 @@ func (h *GameHandler) BroadCastEvents(c *gin.Context) {
 	dice := h.Render("_dice.html", gin.H{"Game": h.Game, "Me": player_id})
 	tokens := h.Render("_tokens.html", gin.H{"Game": h.Game})
 	stream := h.Render("_stream_chats.html", gin.H{"Stream": h.Stream.GetLogs()})
+	leaderboard := h.Render("_leaderboard.html", gin.H{"Game": h.Game})
 
 	c.Writer.Write([]byte(convert2sseEvent("board", board)))
 	c.Writer.Write([]byte(convert2sseEvent("players", players)))
 	c.Writer.Write([]byte(convert2sseEvent("dice", dice)))
 	c.Writer.Write([]byte(convert2sseEvent("tokens", tokens)))
 	c.Writer.Write([]byte(convert2sseEvent("stream", stream)))
+	c.Writer.Write([]byte(convert2sseEvent("leaderboard", leaderboard)))
+
 	flusher.Flush()
 
 	// Pump
@@ -190,6 +194,8 @@ func (h *GameHandler) RollDice(c *gin.Context) {
 				Message:   fmt.Sprintf("%v has completed the game, took %v\n", playerState.Name, playerState.Timer.Elasped),
 				LogType:   COMPLETED,
 			})
+			log.Printf("Best finishes: %v\n", h.Game.BestFinishes)
+			h.Broker.Broadcast("leaderboard", h.Render("_leaderboard.html", gin.H{"Game": h.Game}))
 		}
 	}
 
