@@ -50,6 +50,11 @@
       <aside class="stream-wrap">
         <div class="d-flex flex-column gap-3">
 
+           <!-- Leaderboard (above Stream) -->
+          <div id="leaderboard" sse-swap="leaderboard" hx-swap="innerHTML">
+            {{ template "_leaderboard.html" . }}
+          </div>
+
           <!-- Stream -->
           <div>
             <h3 class="mb-2">Stream</h3>

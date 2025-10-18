@@ -61,3 +61,11 @@ func GetRandNumber(L, R int) int {
 	randVal := rand.Intn(R - L)
 	return L + randVal
 }
+
+func FormatElapsed(d time.Duration) string {
+	// mm:ss.mmm (e.g., 02:14.387)
+	min := int(d.Minutes())
+	sec := int(d.Seconds()) % 60
+	ms := int(d.Milliseconds()) % 1000
+	return fmt.Sprintf("%02d:%02d.%03d", min, sec, ms)
+}

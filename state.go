@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -56,13 +57,19 @@ type Event struct {
 	EventType string
 }
 
+type BestFinish struct {
+	PlayerName string
+	Elasped    time.Duration
+}
 type Game struct {
-	Players     map[string]Player
-	Board       [][]Cell
-	Size        int
-	Mu          sync.Mutex
-	Finder      map[int]Position
-	LastCellVal int
+	Players         map[string]Player
+	Board           [][]Cell
+	Size            int
+	Mu              sync.Mutex
+	Finder          map[int]Position
+	LastCellVal     int
+	BestFinishes    []BestFinish
+	MaxBestFinishes int
 }
 
 // Initializes the Game board and Players
@@ -77,6 +84,10 @@ func (game *Game) InitGame() {
 		log.Fatalf("error while parsing BOARD_DIM env | error: %v\n", err)
 	}
 	maxPortals, err := strconv.Atoi(os.Getenv("MAX_PORTALS"))
+	if err != nil {
+		log.Fatalf("error while parsing MAX_PORTALS env | error: %v\n", err)
+	}
+	maxBestFinishes, err := strconv.Atoi(os.Getenv("MAX_BEST_FINISHES"))
 	if err != nil {
 		log.Fatalf("error while parsing MAX_PORTALS env | error: %v\n", err)
 	}
@@ -97,19 +108,36 @@ func (game *Game) InitGame() {
 	finder := make(map[int]Position)
 	for row := range boardDim {
 		for col := range boardDim {
-			if dir == 1 {
-				grid[row][col].Value = cellVal
-				finder[cellVal] = Position{
-					Row: row,
-					Col: col,
+			if boardDim%2 == 1 {
+				if dir == 1 {
+					grid[row][boardDim-col-1].Value = cellVal
+					finder[cellVal] = Position{
+						Row: row,
+						Col: boardDim - col - 1,
+					}
+				} else {
+					grid[row][col].Value = cellVal
+					finder[cellVal] = Position{
+						Row: row,
+						Col: col,
+					}
 				}
 			} else {
-				grid[row][boardDim-col-1].Value = cellVal
-				finder[cellVal] = Position{
-					Row: row,
-					Col: boardDim - col - 1,
+				if dir == 1 {
+					grid[row][col].Value = cellVal
+					finder[cellVal] = Position{
+						Row: row,
+						Col: col,
+					}
+				} else {
+					grid[row][boardDim-col-1].Value = cellVal
+					finder[cellVal] = Position{
+						Row: row,
+						Col: boardDim - col - 1,
+					}
 				}
 			}
+
 			grid[row][col].Color = defaultCellColor
 			cellVal--
 		}
@@ -158,6 +186,7 @@ func (game *Game) InitGame() {
 	game.Size = boardDim
 	game.Players = make(map[string]Player, maxPlayers)
 	game.Finder = finder
+	game.MaxBestFinishes = maxBestFinishes
 }
 
 // Add the player with the given player ID in the Game
@@ -234,6 +263,23 @@ func (game *Game) RemovePlayer(playerID string) (string, error) {
 	return playerName, nil
 }
 
+// Update best finishes
+func (game *Game) updateBestFinishes(playerName string, elasped time.Duration) {
+	log.Printf("%v\n", game.BestFinishes)
+	game.BestFinishes = append(game.BestFinishes, BestFinish{
+		PlayerName: playerName,
+		Elasped:    elasped,
+	})
+	sort.Slice(game.BestFinishes, func(i, j int) bool {
+		return game.BestFinishes[i].Elasped < game.BestFinishes[j].Elasped
+	})
+
+	log.Printf("after sorting %v\n", game.BestFinishes)
+	if max := game.MaxBestFinishes; max > 0 && len(game.BestFinishes) > max {
+		game.BestFinishes = game.BestFinishes[:max]
+	}
+}
+
 // Updates the player position in the board
 // based on the dice roll
 // returns PlayerState, hasTeleported, hasMoved, hasCompleted, CurrentValue of the cell where player is, error
@@ -254,7 +300,7 @@ func (game *Game) MovePlayer(steps int, playerID string) (Player, bool, bool, bo
 		return playerState, false, false, false, game.Board[row][col].Value, nil
 	}
 
-	log.Printf("old: %v | roll: %v | new: %v\n | newValPos: %v\n", game.Board[row][col].Value, steps, newVal, game.Finder[newVal])
+	log.Printf("old: %v | roll: %v | new: %v | newValPos: %v\n", game.Board[row][col].Value, steps, newVal, game.Finder[newVal])
 
 	// removing player from the game board
 	game.removePlayerFromCell(playerID)
@@ -275,9 +321,13 @@ func (game *Game) MovePlayer(steps int, playerID string) (Player, bool, bool, bo
 
 	// Checking if player has completed the game
 	hasCompleted := false
-	if row == 0 && col == 0 {
+	if game.Board[row][col].Value == game.LastCellVal && playerState.Timer.Active {
+		log.Print("stoping player\n")
 		playerState.Timer.StopNow()
+		log.Print("stopped player\n")
 		hasCompleted = true
+		game.updateBestFinishes(playerState.Name, playerState.Timer.Elasped)
+		log.Printf("best finishes: %v\n", game.BestFinishes)
 	}
 
 	playerState.Position = Position{
