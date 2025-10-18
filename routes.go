@@ -162,7 +162,7 @@ func (h *GameHandler) RollDice(c *gin.Context) {
 	}
 
 	roll := GetRandNumber(1, 7)
-	playerState, hasTeleported, hasMoved, dest, moveErr := h.Game.MovePlayer(roll, player_id)
+	playerState, hasTeleported, hasMoved, hasCompleted, dest, moveErr := h.Game.MovePlayer(roll, player_id)
 	if moveErr != nil {
 		c.String(http.StatusBadRequest, moveErr.Error())
 		return
@@ -183,10 +183,11 @@ func (h *GameHandler) RollDice(c *gin.Context) {
 			LogType:   logType,
 		})
 
-		if playerState.Position.Row == 0 && playerState.Position.Col == 0 {
+		// if player has completed the game
+		if hasCompleted {
 			h.Stream.Push(StreamLog{
 				TimeStamp: time.Now(),
-				Message:   fmt.Sprintf("%v has completed the game", playerState.Name),
+				Message:   fmt.Sprintf("%v has completed the game, took %v\n", playerState.Name, playerState.Timer.Elasped),
 				LogType:   COMPLETED,
 			})
 		}
@@ -198,6 +199,8 @@ func (h *GameHandler) RollDice(c *gin.Context) {
 	h.Broker.Broadcast("dice", h.Render("_dice.html", gin.H{"Game": h.Game, "Me": player_id}))
 	h.Broker.Broadcast("tokens", h.Render("_tokens.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("stream", h.Render("_stream_chats.html", gin.H{"Stream": h.Stream.GetLogs()}))
+
+	// Implement timer html
 
 	c.HTML(
 		http.StatusOK,

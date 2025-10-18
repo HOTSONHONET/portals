@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type Position struct {
@@ -21,11 +22,34 @@ type Cell struct {
 	Players  []Player
 }
 
+type TimerState struct {
+	StartedAt time.Time
+	EndedAt   time.Time
+	Active    bool
+	Elasped   time.Duration
+}
+
+func (t *TimerState) StartNow() {
+	t.StartedAt = time.Now().UTC()
+	t.EndedAt = time.Time{}
+	t.Active = true
+}
+
+func (t *TimerState) StopNow() {
+	if !t.Active {
+		return
+	}
+	t.EndedAt = time.Now().UTC()
+	t.Active = false
+	t.Elasped = t.EndedAt.Sub(t.StartedAt)
+}
+
 type Player struct {
 	ID       string   `json:"id"`
 	Name     string   `json:"name"`
 	Position Position `json:"postion"`
 	Rank     int      `json:"rank"`
+	Timer    TimerState
 }
 
 type Event struct {
@@ -148,18 +172,22 @@ func (game *Game) AddPlayer(playerID, playerName string) error {
 	}
 
 	startRow, startCol := game.Size-1, 0
-	game.Players[playerID] = Player{
+
+	player := Player{
 		ID:   playerID,
 		Name: playerName,
 		Position: Position{
 			Row: startRow,
 			Col: startCol,
 		},
-		Rank: 0,
+		Rank:  0,
+		Timer: TimerState{},
 	}
+	player.Timer.StartNow()
+	game.Players[playerID] = player
 
 	// Adding player to the cell
-	game.Board[startRow][startCol].Players = append(game.Board[startRow][startCol].Players, game.Players[playerID])
+	game.Board[startRow][startCol].Players = append(game.Board[startRow][startCol].Players, player)
 
 	return nil
 }
@@ -187,7 +215,8 @@ func (game *Game) RemovePlayer(playerID string) (string, error) {
 	game.Mu.Lock()
 	defer game.Mu.Unlock()
 
-	if _, exists := game.Players[playerID]; !exists {
+	player, exists := game.Players[playerID]
+	if !exists {
 		return "", fmt.Errorf("Player doesn't exists")
 	}
 
@@ -196,27 +225,33 @@ func (game *Game) RemovePlayer(playerID string) (string, error) {
 	// removing player from the cell
 	game.removePlayerFromCell(playerID)
 
+	if player.Timer.Active {
+		player.Timer.Active = false
+		player.Timer.EndedAt = time.Time{}
+	}
+
 	delete(game.Players, playerID)
 	return playerName, nil
 }
 
 // Updates the player position in the board
 // based on the dice roll
-func (game *Game) MovePlayer(steps int, playerID string) (Player, bool, bool, int, error) {
+// returns PlayerState, hasTeleported, hasMoved, hasCompleted, CurrentValue of the cell where player is, error
+func (game *Game) MovePlayer(steps int, playerID string) (Player, bool, bool, bool, int, error) {
 	game.Mu.Lock()
 	defer game.Mu.Unlock()
 
 	// Getting player position
 	playerState, exists := game.Players[playerID]
 	if !exists {
-		return Player{}, false, false, -1, fmt.Errorf("Player doesn't exists")
+		return Player{}, false, false, false, -1, fmt.Errorf("Player doesn't exists")
 	}
 
 	row, col := playerState.Position.Row, playerState.Position.Col
 
 	newVal := game.Board[row][col].Value + steps
 	if newVal > game.LastCellVal {
-		return playerState, false, false, game.Board[row][col].Value, nil
+		return playerState, false, false, false, game.Board[row][col].Value, nil
 	}
 
 	log.Printf("old: %v | roll: %v | new: %v\n | newValPos: %v\n", game.Board[row][col].Value, steps, newVal, game.Finder[newVal])
@@ -238,6 +273,13 @@ func (game *Game) MovePlayer(steps int, playerID string) (Player, bool, bool, in
 		teleported = true
 	}
 
+	// Checking if player has completed the game
+	hasCompleted := false
+	if row == 0 && col == 0 {
+		playerState.Timer.StopNow()
+		hasCompleted = true
+	}
+
 	playerState.Position = Position{
 		Row: row,
 		Col: col,
@@ -249,5 +291,5 @@ func (game *Game) MovePlayer(steps int, playerID string) (Player, bool, bool, in
 		game.Players[playerID],
 	)
 
-	return playerState, teleported, true, game.Board[row][col].Value, nil
+	return playerState, teleported, true, hasCompleted, game.Board[row][col].Value, nil
 }
