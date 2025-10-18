@@ -4,15 +4,16 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 )
 
 const (
 	JOIN       string = "JOIN"
-	LEAVE             = "LEAVE"
-	MOVE              = "MOVE"
-	TELEPORTED        = "TELEPORTED"
-	COMPLETED         = "COMPLETED"
+	LEAVE      string = "LEAVE"
+	MOVE       string = "MOVE"
+	TELEPORTED string = "TELEPORTED"
+	COMPLETED  string = "COMPLETED"
 )
 
 type StreamLog struct {
@@ -21,39 +22,71 @@ type StreamLog struct {
 	LogType   string
 }
 
-type StreamLogs []StreamLog
-
-// Implementing heap functionalities in Stream Logs
-func (sl StreamLogs) Len() int {
-	return len(sl)
+/* Ring Buffer: Max Heap by Timestamp */
+type RingBuffer struct {
+	data       []StreamLog
+	head, tail int
+	full       bool
+	size       int
 }
 
-func (sl StreamLogs) Less(i, j int) bool {
-	return sl[i].TimeStamp.Before(sl[j].TimeStamp)
+func (r *RingBuffer) Add(log StreamLog) {
+	r.data[r.tail] = log
+	r.tail = (r.tail + 1) % r.size
+	if r.full {
+		r.head = (r.head + 1) % r.size
+	} else if r.head == r.tail {
+		r.full = true
+	}
 }
 
-func (sl StreamLogs) Swap(i, j int) {
-	sl[i], sl[j] = sl[j], sl[i]
+func (r *RingBuffer) GetLatestLogs() []StreamLog {
+	var res []StreamLog
+	// if it is empty
+	if !r.full && r.head == r.tail {
+		return res
+	}
+
+	i := r.tail - 1
+	if i < 0 {
+		i = r.size - 1
+	}
+
+	for {
+		res = append(res, r.data[i])
+		if i == r.head && r.full {
+			break
+		}
+
+		if !r.full && i == 0 {
+			break
+		}
+
+		i--
+
+		if i < 0 {
+			i = r.size - 1
+		}
+
+		if !r.full && i == r.tail-1 {
+			break
+		}
+	}
+
+	return res
 }
 
-func (sl *StreamLogs) Push(lg StreamLog) {
-	*sl = append(*sl, lg)
-}
-
-func (sl *StreamLogs) Pop() StreamLog {
-	old := *sl
-	n := len(old)
-
-	item := old[n-1]
-	*sl = old[:n-1]
-
-	return item
+func NewRingBuffer(size int) *RingBuffer {
+	return &RingBuffer{
+		data: make([]StreamLog, size),
+		size: size,
+	}
 }
 
 // Implementing streamer
 type Stream struct {
-	Logs    StreamLogs // buffered heap
-	MaxSize int
+	Logs *RingBuffer
+	mu   sync.Mutex
 }
 
 func NewStreamer() *Stream {
@@ -61,17 +94,22 @@ func NewStreamer() *Stream {
 	if err != nil {
 		log.Fatalf("error while parsing MAX_STREAMS | error: %v\n", err)
 	}
-	return &Stream{
-		Logs:    StreamLogs{},
-		MaxSize: maxStreams,
+	s := &Stream{
+		Logs: NewRingBuffer(maxStreams),
 	}
+	return s
 }
 
-func (stream *Stream) Push(lg StreamLog) {
-	// Checking if the stream size has reached its limit
-	if len(stream.Logs) == stream.MaxSize {
-		stream.Logs.Pop()
-	}
+func (s *Stream) Push(log StreamLog) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	stream.Logs.Push(lg)
+	s.Logs.Add(log)
+}
+
+func (s *Stream) GetLogs() []StreamLog {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.Logs.GetLatestLogs()
 }

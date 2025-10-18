@@ -68,7 +68,7 @@ func (h *GameHandler) BroadCastEvents(c *gin.Context) {
 	players := h.Render("_players.html", gin.H{"Game": h.Game})
 	dice := h.Render("_dice.html", gin.H{"Game": h.Game, "Me": player_id})
 	tokens := h.Render("_tokens.html", gin.H{"Game": h.Game})
-	stream := h.Render("_stream_chats.html", gin.H{"Stream": h.Stream})
+	stream := h.Render("_stream_chats.html", gin.H{"Stream": h.Stream.GetLogs()})
 
 	c.Writer.Write([]byte(convert2sseEvent("board", board)))
 	c.Writer.Write([]byte(convert2sseEvent("players", players)))
@@ -117,7 +117,7 @@ func (h *GameHandler) JoinGame(c *gin.Context) {
 	h.Broker.Broadcast("board", h.Render("_board.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("dice", h.Render("_dice.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("tokens", h.Render("_tokens.html", gin.H{"Game": h.Game}))
-	h.Broker.Broadcast("stream", h.Render("_stream_chats.html", gin.H{"Stream": h.Stream}))
+	h.Broker.Broadcast("stream", h.Render("_stream_chats.html", gin.H{"Stream": h.Stream.GetLogs()}))
 
 	// Swaping join section
 	c.HTML(http.StatusOK, "_joined_header.html", gin.H{"PlayerName": name})
@@ -148,7 +148,7 @@ func (h *GameHandler) RemovePlayer(c *gin.Context) {
 	h.Broker.Broadcast("board", h.Render("_board.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("dice", h.Render("_dice.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("tokens", h.Render("_tokens.html", gin.H{"Game": h.Game}))
-	h.Broker.Broadcast("stream", h.Render("_stream_chats.html", gin.H{"Stream": h.Stream}))
+	h.Broker.Broadcast("stream", h.Render("_stream_chats.html", gin.H{"Stream": h.Stream.GetLogs()}))
 
 	c.HTML(http.StatusOK, "_join_form.html", nil)
 
@@ -162,32 +162,42 @@ func (h *GameHandler) RollDice(c *gin.Context) {
 	}
 
 	roll := GetRandNumber(1, 7)
-	playerState, hasTeleported, dest, moveErr := h.Game.MovePlayer(roll, player_id)
+	playerState, hasTeleported, hasMoved, dest, moveErr := h.Game.MovePlayer(roll, player_id)
 	if moveErr != nil {
 		c.String(http.StatusBadRequest, moveErr.Error())
 		return
 	}
 
-	msg := fmt.Sprintf("%v has moved to %v\n", playerState.Name, dest)
-	logType := MOVE
-	if hasTeleported {
-		msg = fmt.Sprintf("%v has teleported to %v\n", playerState.Name, dest)
-		logType = TELEPORTED
-	}
+	if hasMoved {
+		msg := fmt.Sprintf("%v got %v and has moved to %v\n", playerState.Name, roll, dest)
+		logType := MOVE
+		if hasTeleported {
+			msg = fmt.Sprintf("%v got %v and has teleported to %v\n", playerState.Name, roll, dest)
+			logType = TELEPORTED
+		}
 
-	// Adding message to the streamer
-	h.Stream.Push(StreamLog{
-		TimeStamp: time.Now(),
-		Message:   msg,
-		LogType:   logType,
-	})
+		// Adding message to the streamer
+		h.Stream.Push(StreamLog{
+			TimeStamp: time.Now(),
+			Message:   msg,
+			LogType:   logType,
+		})
+
+		if playerState.Position.Row == 0 && playerState.Position.Col == 0 {
+			h.Stream.Push(StreamLog{
+				TimeStamp: time.Now(),
+				Message:   fmt.Sprintf("%v has completed the game", playerState.Name),
+				LogType:   COMPLETED,
+			})
+		}
+	}
 
 	// BoardCasting Events
 	h.Broker.Broadcast("players", h.Render("_players.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("board", h.Render("_board.html", gin.H{"Game": h.Game}))
 	h.Broker.Broadcast("dice", h.Render("_dice.html", gin.H{"Game": h.Game, "Me": player_id}))
 	h.Broker.Broadcast("tokens", h.Render("_tokens.html", gin.H{"Game": h.Game}))
-	h.Broker.Broadcast("stream", h.Render("_stream_chats.html", gin.H{"Stream": h.Stream}))
+	h.Broker.Broadcast("stream", h.Render("_stream_chats.html", gin.H{"Stream": h.Stream.GetLogs()}))
 
 	c.HTML(
 		http.StatusOK,

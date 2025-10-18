@@ -1,7 +1,7 @@
 {{ define "_stream_chats.html" }}
     <div class="container border border-dark rounded overflow-y-scroll" style="height: 30vh;">
         {{if .Stream }}
-        {{range $id, $log := .Stream.Logs }}
+        {{range $id, $log := .Stream }}
             {{- if eq $log.LogType "JOIN"}}
                 <div 
                     class="container border m-2 rounded rounded-2"

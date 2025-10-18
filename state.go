@@ -33,10 +33,12 @@ type Event struct {
 }
 
 type Game struct {
-	Players map[string]Player
-	Board   [][]Cell
-	Size    int
-	Mu      sync.Mutex
+	Players     map[string]Player
+	Board       [][]Cell
+	Size        int
+	Mu          sync.Mutex
+	Finder      map[int]Position
+	LastCellVal int
 }
 
 // Initializes the Game board and Players
@@ -61,64 +63,30 @@ func (game *Game) InitGame() {
 		grid[row] = make([]Cell, boardDim)
 	}
 
-	N := boardDim * boardDim
-
-	// Building Candidates for portals
-	validCellIDs := []int{}
-	for cellID := range N {
-		// Excluding starting and ending cells
-		if cellID == 0 || cellID == (boardDim-1)*boardDim {
-			continue
-		}
-		validCellIDs = append(validCellIDs, cellID)
-	}
-
-	// Creating Portals
-	for range maxPortals {
-		idx := GetRandNumber(0, len(validCellIDs))
-		cellID := validCellIDs[idx]
-
-		srrow, srcol := cellID/boardDim, cellID%boardDim
-
-		validCellIDs = append(validCellIDs[:idx], validCellIDs[idx+1:]...)
-
-		idx = GetRandNumber(0, len(validCellIDs))
-		cellID = validCellIDs[idx]
-		destRow, destCol := cellID/boardDim, cellID%boardDim
-		validCellIDs = append(validCellIDs[:idx], validCellIDs[idx+1:]...)
-
-		color := GenerateLightRandomColor()
-		grid[srrow][srcol] = Cell{
-			IsPortal: true,
-			Dest: Position{
-				Row: destRow,
-				Col: destCol,
-			},
-			Color: color,
-		}
-		grid[destRow][destCol].IsPortal = true
-		grid[destRow][destCol].Color = color
-	}
+	// Assigning last cell value
+	game.LastCellVal = boardDim * boardDim
 
 	// Assigning Values to the Cells
 	dir := 1
 	defaultCellColor := os.Getenv("DEFAULT_CELL_COLOR")
-	cellVal := N
+	cellVal := game.LastCellVal
+	finder := make(map[int]Position)
 	for row := range boardDim {
 		for col := range boardDim {
 			if dir == 1 {
 				grid[row][col].Value = cellVal
-			} else {
-				grid[row][boardDim-col-1].Value = cellVal
-			}
-
-			if !grid[row][col].IsPortal {
-				grid[row][col].Dest = Position{
+				finder[cellVal] = Position{
 					Row: row,
 					Col: col,
 				}
-				grid[row][col].Color = defaultCellColor
+			} else {
+				grid[row][boardDim-col-1].Value = cellVal
+				finder[cellVal] = Position{
+					Row: row,
+					Col: boardDim - col - 1,
+				}
 			}
+			grid[row][col].Color = defaultCellColor
 			cellVal--
 		}
 
@@ -126,9 +94,46 @@ func (game *Game) InitGame() {
 
 	}
 
+	// Building Candidates for portals
+	validCellVals := []int{}
+	for cellID := range game.LastCellVal {
+		cellID++
+		// Excluding starting and ending cells
+		if cellID == 1 || cellID == game.LastCellVal {
+			continue
+		}
+		validCellVals = append(validCellVals, cellID)
+	}
+
+	// Creating Portals
+	for range maxPortals {
+		idx := GetRandNumber(0, len(validCellVals))
+		cellVal := validCellVals[idx]
+
+		srrow, srcol := finder[cellVal].Row, finder[cellVal].Col
+
+		// Removing the cell Value
+		validCellVals = append(validCellVals[:idx], validCellVals[idx+1:]...)
+
+		idx = GetRandNumber(0, len(validCellVals))
+		cellVal = validCellVals[idx]
+		destRow, destCol := finder[cellVal].Row, finder[cellVal].Col
+		validCellVals = append(validCellVals[:idx], validCellVals[idx+1:]...)
+
+		color := GenerateLightRandomColor()
+		grid[srrow][srcol].IsPortal = true
+		grid[srrow][srcol].Dest = Position{
+			Row: destRow,
+			Col: destCol,
+		}
+		grid[srrow][srcol].Color = color
+		grid[destRow][destCol].Color = color
+	}
+
 	game.Board = grid
 	game.Size = boardDim
 	game.Players = make(map[string]Player, maxPlayers)
+	game.Finder = finder
 }
 
 // Add the player with the given player ID in the Game
@@ -197,55 +202,30 @@ func (game *Game) RemovePlayer(playerID string) (string, error) {
 
 // Updates the player position in the board
 // based on the dice roll
-func (game *Game) MovePlayer(steps int, playerID string) (Player, bool, Position, error) {
+func (game *Game) MovePlayer(steps int, playerID string) (Player, bool, bool, int, error) {
 	game.Mu.Lock()
 	defer game.Mu.Unlock()
 
 	// Getting player position
 	playerState, exists := game.Players[playerID]
 	if !exists {
-		return Player{}, false, Position{}, fmt.Errorf("Player doesn't exists")
+		return Player{}, false, false, -1, fmt.Errorf("Player doesn't exists")
 	}
 
 	row, col := playerState.Position.Row, playerState.Position.Col
-	size := game.Size
+
+	newVal := game.Board[row][col].Value + steps
+	if newVal > game.LastCellVal {
+		return playerState, false, false, game.Board[row][col].Value, nil
+	}
+
+	log.Printf("old: %v | roll: %v | new: %v\n | newValPos: %v\n", game.Board[row][col].Value, steps, newVal, game.Finder[newVal])
 
 	// removing player from the game board
 	game.removePlayerFromCell(playerID)
 
-	for steps > 0 {
-		left2Right := ((size-1-row)%2 == 0)
-
-		if left2Right {
-			rem := (size - 1) - col
-			if steps <= rem {
-				col += steps
-				steps = 0
-			} else {
-				col = size - 1
-				steps -= rem
-				if row > 0 {
-					row--
-				} else {
-					steps = 0
-				}
-			}
-		} else {
-			rem := col
-			if steps <= rem {
-				col -= steps
-				steps = 0
-			} else {
-				col = 0
-				steps -= rem
-				if row > 0 {
-					row--
-				} else {
-					steps = 0
-				}
-			}
-		}
-	}
+	// Moving the player
+	row, col = game.Finder[newVal].Row, game.Finder[newVal].Col
 
 	// Checking teleportation happening or not
 	teleported := false
@@ -264,7 +244,10 @@ func (game *Game) MovePlayer(steps int, playerID string) (Player, bool, Position
 	}
 
 	game.Players[playerID] = playerState
-	game.Board[row][col].Players = append(game.Board[row][col].Players, game.Players[playerID])
+	game.Board[row][col].Players = append(
+		game.Board[row][col].Players,
+		game.Players[playerID],
+	)
 
-	return playerState, teleported, dest, nil
+	return playerState, teleported, true, game.Board[row][col].Value, nil
 }
